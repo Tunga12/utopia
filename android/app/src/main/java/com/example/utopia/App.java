@@ -12,4 +12,5 @@ public class App extends FlutterApplication {
         MultiDex.install(this);
     }
 
+
 }

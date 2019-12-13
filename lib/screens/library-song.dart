@@ -24,6 +24,7 @@ class _LibrarySongPageState extends State<LibrarySongPage> {
                 list.add(ListTile(
                   contentPadding: EdgeInsets.symmetric(horizontal: 8.0),
                   leading: CircleAvatar(
+                    backgroundColor: Color(0x555468FF),
                     child: Icon(
                       Icons.music_note,
                       color: Colors.white,

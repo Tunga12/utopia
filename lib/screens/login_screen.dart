@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:utopia/components/rounded_button.dart';
 import 'package:utopia/constants.dart';
+import 'package:utopia/screens/registration_screen.dart';
 import 'package:utopia/screens/store-page.dart';
 import 'package:modal_progress_hud/modal_progress_hud.dart';
 
@@ -81,6 +82,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   }
                 },
               ),
+              FlatButton(
+                child: Row(
+                  children: <Widget>[
+                    Text("Don't have an account?"),
+                    Text("  Register",
+                        style: TextStyle(
+                          color: Colors.blueAccent,
+                        ))
+                  ],
+                ),
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => RegistrationScreen()));
+                },
+              )
             ],
           ),
         ),

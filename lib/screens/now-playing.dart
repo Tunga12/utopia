@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:utopia/models/album.dart';
 import 'package:utopia/models/media.dart';
 import 'package:utopia/models/playlist.dart';
+import 'package:utopia/providers/album_dao.dart';
+// import 'package:utopia/providers/backgroundTask.dart';
 import 'package:utopia/providers/playlist_dao.dart';
 
 enum WhyFarther { harder, smarter, selfStarter, tradingCharter }
@@ -80,7 +82,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
   Widget build(BuildContext context) {
     return StreamBuilder<Media>(
         stream: widget.mediaController.stream,
-        builder: (context, snapshot) {
+        builder: (context, AsyncSnapshot<Media> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
@@ -160,7 +162,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                               },
                             ),
                             IconButton(
-                              icon: favorite
+                              icon: snapshot.data.heart
                                   ? Icon(Icons.star, color: Colors.yellow[800])
                                   : Icon(Icons.star_border),
                               onPressed: () async {
@@ -168,15 +170,17 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                                   favorite = !favorite;
                                 });
 
-                                if (favorite) {
-                                  await storeToFavoritePlaylist(snapshot.data);
-                                  List<Playlist> playlists =
-                                      await playlistDao.getAllSortedByName();
+                                await toggleFavorite(snapshot.data);
 
-                                  playlists.forEach((playlist) {
-                                    print(playlist.toMap());
-                                  });
-                                }
+                                // if (favorite) {
+                                //   // await storeToFavoritePlaylist(snapshot.data);
+                                //   List<Playlist> playlists =
+                                //       await playlistDao.getAllSortedByName();
+
+                                //   playlists.forEach((playlist) {
+                                //     print(playlist.toMap());
+                                //   });
+                                // }
                               },
                             ),
                             IconButton(
@@ -193,6 +197,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                                   repeat = !repeat;
                                 });
                                 if (repeat) {
+                                  // myBackgroundTask()
                                   await audioPlayer
                                       .setReleaseMode(ReleaseMode.LOOP);
                                 } else {
@@ -333,7 +338,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                   SimpleDialogOption(
                     onPressed: () {
                       Navigator.pop(context);
-                      _newPlaylist();
+                      _newPlaylist(currentMedia);
                     },
                     child: const Text('NEW PLAYLIST'),
                   ),
@@ -344,7 +349,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
         });
   }
 
-  Future<void> _newPlaylist() async {
+  Future<void> _newPlaylist(Media currentMedia) async {
     final playlistNameController = TextEditingController();
 
     await showDialog(
@@ -373,13 +378,14 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                     onPressed: () async {
                       Playlist newPlaylist = Playlist(
                         name: playlistNameController.text,
-                        albums: <Album>[],
+                        // albums: <Album>[],
                       );
-                      await playlistDao.insert(newPlaylist);
+                      int playlistId = await playlistDao.insert(newPlaylist);
+                      await _addSongToPlaylistDb(currentMedia, playlistId);
                       Navigator.pop(context);
-                      Scaffold.of(context).showSnackBar(SnackBar(
-                        content: Text('Playlist created!'),
-                      ));
+                      // Scaffold.of(context).showSnackBar(SnackBar(
+                      //   content: Text('Playlist created!'),
+                      // ));
                     },
                     child: const Text('CREATE PLAYLIST'),
                   ),
@@ -488,52 +494,70 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
     return shuffledAlbums;
   }
 
-  Future storeToFavoritePlaylist(Media currentMedia) async {
-    Playlist favoritePlaylist;
-
-    List<Playlist> playlists = await playlistDao.getAllSortedByName();
-
-    favoritePlaylist = playlists.firstWhere((playlist) {
-      return playlist.name == 'Favorites';
-    }, orElse: () {
-      return null;
-    });
-
-    if (favoritePlaylist == null) {
-      var playlist = Playlist(
-        name: 'Favorites',
-        albums: <Album>[],
-      );
-      await playlistDao.insert(playlist);
-      return;
-    }
-
+  Future toggleFavorite(Media currentMedia) async{
+    // get album
+    // update the media that has the same id as currentMedia
     Album currentAlbum = list.firstWhere((album) {
       return album.medias.contains(currentMedia);
     });
 
-    Album oldAlbum = favoritePlaylist.albums.firstWhere((album) {
-      return album.id == currentAlbum.id;
-    }, orElse: () {
-      return null;
+    currentAlbum.medias.forEach((media) {
+      if(media.id == currentMedia.id){
+        media.heart = !media.heart;
+      }
     });
-    if (oldAlbum == null) {
-      // there is no song corresponding to that album
-      currentAlbum.medias = [currentMedia];
-      favoritePlaylist.albums.add(currentAlbum);
-    } else {
-      // that album exists with previously favorite songs so add the new song
-      oldAlbum.medias.add(currentMedia);
-      favoritePlaylist.albums.forEach((album) {
-        if (album.id == oldAlbum.id) {
-          album = oldAlbum;
-        }
-      });
-    }
-    await playlistDao.update(favoritePlaylist);
+
+    print(currentAlbum.toMap());
+
+    await AlbumDao.update(currentAlbum);
   }
 
-  void deleteFromFavoritePlaylist() {}
+  // Future storeToFavoritePlaylist(Media currentMedia) async {
+  //   Playlist favoritePlaylist;
+
+  //   List<Playlist> playlists = await playlistDao.getAllSortedByName();
+
+  //   favoritePlaylist = playlists.firstWhere((playlist) {
+  //     return playlist.name == 'Favorites';
+  //   }, orElse: () {
+  //     return null;
+  //   });
+
+  //   if (favoritePlaylist == null) {
+  //     var playlist = Playlist(
+  //       name: 'Favorites',
+  //       albums: <Album>[],
+  //     );
+  //     await playlistDao.insert(playlist);
+  //     return;
+  //   }
+
+  //   Album currentAlbum = list.firstWhere((album) {
+  //     return album.medias.contains(currentMedia);
+  //   });
+
+  //   Album oldAlbum = favoritePlaylist.albums.firstWhere((album) {
+  //     return album.id == currentAlbum.id;
+  //   }, orElse: () {
+  //     return null;
+  //   });
+  //   if (oldAlbum == null) {
+  //     // there is no song corresponding to that album
+  //     currentAlbum.medias = [currentMedia];
+  //     favoritePlaylist.albums.add(currentAlbum);
+  //   } else {
+  //     // that album exists with previously favorite songs so add the new song
+  //     oldAlbum.medias.add(currentMedia);
+  //     favoritePlaylist.albums.forEach((album) {
+  //       if (album.id == oldAlbum.id) {
+  //         album = oldAlbum;
+  //       }
+  //     });
+  //   }
+  //   await playlistDao.update(favoritePlaylist);
+  // }
+
+  void removeFromFavoritePlaylist() {}
 
   Widget _listOfPlaylist(Media currentMedia) {
     return FutureBuilder(
@@ -569,7 +593,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                       ),
                       onTap: () async {
                         await _addSongToPlaylistDb(
-                            currentMedia, snapshot.data[index]);
+                            currentMedia, snapshot.data[index].id);
                         Navigator.pop(context);
                       },
                     ),
@@ -577,38 +601,55 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
                 },
               );
             }
+            break;
+          default:
+            return Container();
         }
       },
     );
   }
 
-  Future _addSongToPlaylistDb(Media currentMedia, Playlist playlist) async {
+  Future _addSongToPlaylistDb(Media currentMedia, int playlistId) async {
+    // Album currentAlbum = list.firstWhere((album) {
+    //   return album.medias.contains(currentMedia);
+    // });
+
+    // Album oldAlbum = playlist.albums.firstWhere((album) {
+    //   return album.id == currentAlbum.id;
+    // }, orElse: () {
+    //   return null;
+    // });
+
+    // if (oldAlbum == null) {
+    //   // there is no song corresponding to that album
+    //   currentAlbum.medias = [currentMedia];
+    //   playlist.albums.add(currentAlbum);
+    // } else {
+    //   // that album exists with previously favorite songs so add the new song
+    //   oldAlbum.medias.add(currentMedia);
+    //   playlist.albums.forEach((album) {
+    //     if (album.id == oldAlbum.id) {
+    //       album = oldAlbum;
+    //     }
+    //   });
+    // }
+    // await playlistDao.update(playlist);
+
     Album currentAlbum = list.firstWhere((album) {
       return album.medias.contains(currentMedia);
     });
 
-    Album oldAlbum = playlist.albums.firstWhere((album) {
-      return album.id == currentAlbum.id;
-    }, orElse: () {
-      return null;
+    currentAlbum.medias.forEach((media){
+      if(currentMedia.id == media.id){
+        if(!media.playlists.contains(playlistId)){
+          media.playlists.add(playlistId);
+        }
+      }
     });
 
-    if (oldAlbum == null) {
-      // there is no song corresponding to that album
-      currentAlbum.medias = [currentMedia];
-      playlist.albums.add(currentAlbum);
-    } else {
-      // that album exists with previously favorite songs so add the new song
-      oldAlbum.medias.add(currentMedia);
-      playlist.albums.forEach((album) {
-        if (album.id == oldAlbum.id) {
-          album = oldAlbum;
-        }
-      });
-    }
-    await playlistDao.update(playlist);
-    Scaffold.of(context).showSnackBar(SnackBar(
-      content: Text('Song added to Playlist!'),
-    ));
+    await AlbumDao.update(currentAlbum);
+    
   }
+
+
 }

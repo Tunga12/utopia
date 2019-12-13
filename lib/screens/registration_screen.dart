@@ -77,6 +77,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       await _firestore.collection('users').add(
                         User(
                           uid: newUser.user.uid,
+                          email: newUser.user.email,
                           boughtSongs: {},
                           language: {},
                           genre: {},

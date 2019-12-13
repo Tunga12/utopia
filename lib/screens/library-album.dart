@@ -30,7 +30,7 @@ class _LibraryAlbumPageState extends State<LibraryAlbumPage> {
         }
         if (snapshot.data.length == 0) {
           return Center(
-            child: Text('The are no playlist'),
+            child: Text('The are no albums'),
           );
         }
         
@@ -53,7 +53,7 @@ class _LibraryAlbumPageState extends State<LibraryAlbumPage> {
                     children: <Widget>[
                       Expanded(
                         child: Container(
-                          color: const Color(0x11000000),
+                          color: Color(0x115468FF),
                           child: Image.asset(
                             'assets/album.png',
                           ),

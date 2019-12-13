@@ -7,6 +7,8 @@ class Media{
   String genre;
   String language;
   String length;
+  bool heart;
+  List<int> playlists = [];
   num numOfDownloads;
  
 
@@ -17,6 +19,9 @@ class Media{
         data = json['data'],
         length = json['length'],
         language = json['language'],
+        // i have to handle the following values: null, true, false. null because this property does not exist in firestore
+        heart = (json['heart'] != true) ? false : true,
+        playlists = json['playlists'] == null ? [] : List<int>.from(json['playlists']),
         numOfDownloads = json['numOfDownloads'];
 
 
@@ -28,6 +33,8 @@ class Media{
       'genre': genre,
       'language': language,
       'length': length,
+      'heart': heart,
+      'playlists': playlists,
       'numOfDownloads': numOfDownloads,
     };
 

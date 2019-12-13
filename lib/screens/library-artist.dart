@@ -40,6 +40,7 @@ class _LibraryArtistPageState extends State<LibraryArtistPage> {
             return ListTile(
               contentPadding: EdgeInsets.symmetric(horizontal: 8.0),
               leading: CircleAvatar(
+                backgroundColor: Color(0x555468FF),
                 child: Icon(
                   Icons.person,
                   color: Colors.white,

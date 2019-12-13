@@ -18,6 +18,8 @@ class _MyLibraryPageState extends State<MyLibraryPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('My Library'),
+          elevation: 0,
+          iconTheme: new IconThemeData(color: Color(0xff5468FF)),
           bottom: TabBar(
             tabs: [
               Tab(icon: Icon(Icons.music_note)),
@@ -28,7 +30,7 @@ class _MyLibraryPageState extends State<MyLibraryPage> {
           ),
           actions: <Widget>[
             IconButton(
-              icon: Icon(Icons.search),
+              icon: Icon(Icons.search,),
               onPressed: () {
                 // showSearch(context: context, delegate: SearchPage());
               },

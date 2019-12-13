@@ -1,6 +1,7 @@
 // import 'dart:convert';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -9,10 +10,13 @@ import 'package:utopia/models/media.dart';
 import 'package:utopia/models/user.dart';
 // import 'package:dio/dio.dart';
 import 'package:utopia/providers/album_dao.dart';
+import 'package:utopia/providers/payment_service.dart';
+import 'package:utopia/screens/gift_page.dart';
 import 'package:utopia/screens/login_screen.dart';
 // import 'package:utopia/providers/db_provider.dart';
 import 'package:utopia/utilities/util.dart';
 import 'package:utopia/models/album.dart';
+import 'package:stripe_payment/stripe_payment.dart';
 
 // final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
@@ -30,10 +34,22 @@ class _AlbumPageState extends State<AlbumPage> {
   final _firestore = Firestore.instance;
 
   @override
+  void initState() {
+    super.initState();
+    StripePayment.setOptions(
+      StripeOptions(
+        publishableKey: "pk_test_dTVWBYdVdlTlhTIFcAoe5GAQ008iyPBtUp",
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       // key: _scaffoldKey,
       appBar: AppBar(
+        elevation: 0,
+        iconTheme: new IconThemeData(color: Color(0xff5468FF)),
         title: ListTile(
           title: Text(widget.albumDoc.data['albumName']),
           subtitle: Text(widget.albumDoc.data['artistName']),
@@ -48,13 +64,6 @@ class _AlbumPageState extends State<AlbumPage> {
             SizedBox(
               height: 10.0,
             ),
-            // Text(
-            //   'Artist Name',
-            //   style: TextStyle(
-            //     fontWeight: FontWeight.bold,
-            //     fontSize: 16,
-            //   ),
-            // ),
             SizedBox(
               height: 10.0,
             ),
@@ -63,7 +72,17 @@ class _AlbumPageState extends State<AlbumPage> {
               children: <Widget>[
                 Expanded(
                   flex: 4,
-                  child: Image.network(widget.albumDoc.data['image']),
+                  child: ClipRRect(
+                    borderRadius: new BorderRadius.circular(10.0),
+                    child: CachedNetworkImage(
+                      fit: BoxFit.fill,
+                      placeholder: (context, url) =>
+                          Image.asset('assets/placeholderAlbum.png'),
+                      imageUrl: widget.albumDoc.data['image'],
+                      errorWidget: (context, url, error) =>
+                          Image.asset('assets/placeholderAlbum.png'),
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 20.0,
@@ -71,7 +90,7 @@ class _AlbumPageState extends State<AlbumPage> {
                 Expanded(
                   flex: 3,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       Text(widget.albumDoc.data['albumName']),
                       SizedBox(height: 10.0),
@@ -83,11 +102,23 @@ class _AlbumPageState extends State<AlbumPage> {
                         child: Text('Download Album'),
                         onPressed: () async {
                           // pay
+                          PaymentMethod paymentMethod =
+                              await StripePayment.paymentRequestWithCardForm(
+                                  null);
+                          
+                          Token token = await StripePayment.createTokenWithCard(paymentMethod.card);
 
+                          PaymentService.addCard(token);
+                          print(paymentMethod.toJson());
+                          //
+                          print(widget.albumDoc.data);
                           // update user in firestore
                           var album = Album.fromMap(
                               widget.albumDoc.data, widget.albumDoc.documentID);
                           album.firestoreId = widget.albumDoc.documentID;
+
+                          print(album.toMap());
+
                           var mediaList = album.medias;
                           if (widget.loggedInUser == null) {
                             await Navigator.push(
@@ -101,8 +132,25 @@ class _AlbumPageState extends State<AlbumPage> {
                           // downloadAlbum
                           downloadAlbum(album, widget.albumDoc.documentID);
                         },
-                        color: Colors.blueAccent,
+                        color: Color(0xff5468FF),
                         textColor: Colors.white,
+                      ),
+                      RaisedButton.icon(
+                        // padding: EdgeInsets.all(8.0),
+                        label: Text('Gift'),
+                        icon: Icon(Icons.card_giftcard),
+                        textColor: Colors.white,
+                        color: Color(0xff5468FF),
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => GiftPage(
+                                        sender: widget.loggedInUser,
+                                        albumDoc: widget.albumDoc,
+                                        isAlbum: true,
+                                      )));
+                        },
                       )
                     ],
                   ),
@@ -128,32 +176,61 @@ class _AlbumPageState extends State<AlbumPage> {
       shrinkWrap: true,
       itemCount: widget.albumDoc.data['medias'].length,
       itemBuilder: (BuildContext context, int index) {
+        var album =
+            Album.fromMap(widget.albumDoc.data, widget.albumDoc.documentID);
+
+        var mediaList = [album.medias[index]];
+
         return ListTile(
           contentPadding: EdgeInsets.zero,
           leading: CircleAvatar(
+            backgroundColor: Color(0x555468FF),
             child: Icon(
               Icons.music_note,
               color: Colors.white,
             ),
           ),
           title: Text(widget.albumDoc.data['medias'][index]['name'].toString()),
-          trailing: IconButton(
-            icon: Icon(
-              Icons.file_download,
-              color: Colors.blueAccent,
-            ),
-            onPressed: () async {
-              // showProgress();
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              IconButton(
+                icon: Icon(
+                  Icons.file_download,
+                  color: Color(0xff5468FF),
+                ),
+                onPressed: () async {
+                  // showProgress();
 
-              // update user in firestore
-              var album = Album.fromMap(
-                  widget.albumDoc.data, widget.albumDoc.documentID);
-              var mediaList = [album.medias[index]];
-              updateUserInFirestore(widget.loggedInUser.uid, album, mediaList);
+                  // update user in firestore
+                  // var album = Album.fromMap(
+                  //     widget.albumDoc.data, widget.albumDoc.documentID);
+                  // var mediaList = [album.medias[index]];
+                  updateUserInFirestore(
+                      widget.loggedInUser.uid, album, mediaList);
 
-              downloadSingle(
-                  album, album.medias[index], widget.albumDoc.documentID);
-            },
+                  downloadSingle(
+                      album, album.medias[index], widget.albumDoc.documentID);
+                },
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.card_giftcard,
+                  color: Color(0xff5468FF),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => GiftPage(
+                                sender: widget.loggedInUser,
+                                albumDoc: widget.albumDoc,
+                                media: album.medias[index],
+                                isAlbum: false,
+                              )));
+                },
+              ),
+            ],
           ),
         );
       },
@@ -270,7 +347,10 @@ class _AlbumPageState extends State<AlbumPage> {
       // update data of media in db
       media.data = dataPath;
       await AlbumDao.update(album);
+      print(album.toMap());
     });
+
+    // print(album.toMap());
 
     print('Download successful!!');
   }
@@ -448,32 +528,34 @@ class _AlbumPageState extends State<AlbumPage> {
             category: user.category,
           ).toMap());
 
-      album.medias.forEach((media) {
-        if (mediaIdList.contains(media.id)) {
-          media.numOfDownloads = media.numOfDownloads + 1;
-          print(media.numOfDownloads);
-        }
-      });
+      // update number of downloads
+      // or add an entry to the sold collection
 
-      var updatedAlbum = Album(
-              albumName: album.albumName,
-              artist: album.artist,
-              artistName: album.artistName,
-              category: album.category,
-              description: album.description,
-              image: album.image,
-              type: album.type,
-              medias: album.medias)
-          .toMap();
+      // album.medias.forEach((media) {
+      //   if (mediaIdList.contains(media.id)) {
+      //     media.numOfDownloads = media.numOfDownloads + 1;
+      //     print(media.numOfDownloads);
+      //   }
+      // });
 
-      updatedAlbum.remove('id');
-      updatedAlbum.remove('firestoreId');
+      // var updatedAlbum = Album(
+      //         albumName: album.albumName,
+      //         artist: album.artist,
+      //         artistName: album.artistName,
+      //         category: album.category,
+      //         description: album.description,
+      //         image: album.image,
+      //         type: album.type,
+      //         medias: album.medias)
+      //     .toMap();
 
-      print(album.firestoreId);
-      await tx.update(
-          _firestore.collection('albums').document(album.firestoreId),
-          updatedAlbum);
+      // updatedAlbum.remove('id');
+      // updatedAlbum.remove('firestoreId');
 
+      // print(album.firestoreId);
+      // await tx.update(
+      //     _firestore.collection('albums').document(album.firestoreId),
+      //     updatedAlbum);
     });
   }
 }

@@ -15,3 +15,13 @@ const kTextFieldDecoration = InputDecoration(
     borderRadius: BorderRadius.all(Radius.circular(32.0)),
   ),
 );
+
+
+Color utopiaprimaryColor = Color(0xff282C4B);
+Color utopiasecondaryColor = Color(0xff323761);
+Color utopiabackgroundColor = Color(0xffFEFEFE);
+Color utopiaotherColor = Color(0xff232D3B);
+Color utopiaothersColor = Color(0xff5E6178);
+Color utopiaErrorColor = Color(0xffff0000);
+
+

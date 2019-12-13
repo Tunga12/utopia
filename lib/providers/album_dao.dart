@@ -67,7 +67,7 @@ class AlbumDao {
     );
 
     // no album with this firestoreId is found
-    if(recordSnapshot == null){
+    if (recordSnapshot == null) {
       return null;
     }
 
@@ -75,6 +75,98 @@ class AlbumDao {
     // An ID is a key of a record from the database.
     album.id = recordSnapshot.key;
     return album;
+  }
+
+  static Future<List<Album>> getFavorites() async {
+    // Finder object can also sort data.
+    // final finder = Finder(filter: Filter.equals('heart', true));
+
+    // final recordSnapshots = await _albumStore.find(
+    //   await _db,
+    //   finder: finder,
+    // );
+
+    // // Making a List<Album> out of List<RecordSnapshot>
+    // return recordSnapshots.map((snapshot) {
+    //   final album = Album.fromMap(snapshot.value);
+    //   // An ID is a key of a record from the database.
+    //   album.id = snapshot.key;
+    //   return album;
+    // }).toList();
+
+    final recordSnapshots = await _albumStore.find(
+      await _db,
+    );
+
+    // Making a List<Album> out of List<RecordSnapshot>
+
+    List<Album> list = recordSnapshots.map((snapshot) {
+      final album = Album.fromMap(snapshot.value);
+
+      Album newAlbum = Album(
+          albumName: album.albumName,
+          artistName: album.artistName,
+          artist: album.artist,
+          category: album.category,
+          description: album.description,
+          image: album.image,
+          type: album.type,
+          medias: []);
+
+      album.medias.forEach((media) {
+        if (media.heart) {
+          newAlbum.medias.add(media);
+        }
+      });
+      // An ID is a key of a record from the database.
+      newAlbum.id = snapshot.key;
+      // if (newAlbum.medias.isNotEmpty) {
+      //   return newAlbum;
+      // }else{
+      //   return null;
+      // }
+      return newAlbum;
+    }).toList();
+
+    list.removeWhere((album){
+      // if it is null, it is not favorite
+      if(album.medias.isEmpty){
+        return true;
+      }
+      return false;
+    });
+
+    return list;
+  }
+
+  static Future<List<Album>> getAlbumsOfPlaylist(int playlistId) async {
+    final recordSnapshots = await _albumStore.find(
+      await _db,
+    );
+
+    // Making a List<Album> out of List<RecordSnapshot>
+    return recordSnapshots.map((snapshot) {
+      final album = Album.fromMap(snapshot.value);
+
+      Album newAlbum = Album(
+          albumName: album.albumName,
+          artistName: album.artistName,
+          artist: album.artist,
+          category: album.category,
+          description: album.description,
+          image: album.image,
+          type: album.type,
+          medias: []);
+
+      album.medias.forEach((media) {
+        if (media.playlists.contains(playlistId)) {
+          newAlbum.medias.add(media);
+        }
+      });
+      // An ID is a key of a record from the database.
+      newAlbum.id = snapshot.key;
+      return newAlbum;
+    }).toList();
   }
 }
 
